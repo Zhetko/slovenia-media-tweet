@@ -1,0 +1,7 @@
+Slovenia media tweet
+
+This is an app that tracks tweets made by Slovenian news outlets and journalist. It uses Tweepy and streaming API to collect the tweets.
+The media-list is empty. Fill it with TwitterIDs of users you want to follow.
+
+Second part of is a Django app. It uses D3.js tools to visualise the contents of the tweets.
+manage.py populatedb is the command to save the collected tweets to Django database.

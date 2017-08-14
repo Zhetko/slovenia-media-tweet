@@ -1,0 +1,182 @@
+{% include 'head.html' %}
+
+  <body>
+
+    {% include 'header.html' %}
+
+
+    <div class="results-container">
+
+
+
+      <h1 class="results">Analiza niza '{{ query }}'</h1>
+
+      <div class="card-wrapper">
+        <h3 class="card-title">Število vseh tvitov, ki vsebujejo iskani niz</h3>
+        <div id="tweet-count">
+          <span class="tweet-count">{{ tweet_count }}</span>
+        </div>
+      </div>
+
+      <div class="card-wrapper">
+        <h3 class="card-title">Besede in imena, ki se največkrat pojavljajo v tvitih, ki vsebuj iskani niz</h3>
+        <div id="cloud"></div>
+      </div>
+
+      <div class="card-wrapper">
+        <h3 class="card-title">Uporaba niza '{{ query }}' skozi čas</h3>
+        <div id="time-series" style="width: 800px; height: 400px;"><!-- Plotly chart will be drawn inside this DIV --></div>
+      </div>
+
+      <div class="card-wrapper">
+        <h3 class="card-title">Uporabniki, ki so največkrat uporabili iskani niz</h3>
+        <div id="top-users">
+          <div class="results">
+            <div class="user header">
+              <span class="username">Ime</span>
+              <div class="progress-bar"></div>
+              <span class="frequency">Število tvitov</span>
+            </div>
+            {% for value in top5 %}
+              <div class="user">
+                <span class="username">@{{ value.0 }}</span>
+                <div class="progress-bar">
+                  <div class="bar" style="width: {{ value.2 }}%"></div>
+                </div>
+                <span class="frequency">{{ value.1 }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+
+      </div>
+
+
+    </div>
+
+    </div>
+
+    {% include 'footer.html' %}
+
+  </body>
+
+  <script>
+    var trace1 = {
+        y: {{ trace1|safe }},
+        x: {{ x|safe }},
+        type: 'scatter',
+        name: 'Število tvitov',
+        marker: {
+          color: '#226666',
+        }
+    };
+    var trace2 = {
+        y: {{ trace2|safe }},
+        x: {{ x|safe }},
+        type: 'scatter',
+        name: 'Število uporabnikov',
+        marker: {
+          color: '#aa6c39',
+        }
+    };
+    var layout = {
+        title: "",
+        showlegend: true,
+        annotations: {
+          color: 'black',
+        },
+      };
+    var data = [trace2, trace1];
+    Plotly.newPlot('time-series', data, layout, {displayModeBar: false});
+  </script>
+
+  <script>
+
+      var minfont = 8;
+      var maxfont = 80;
+
+      var width = 800;
+      var height = 400;
+
+      var fill = d3.scaleOrdinal()
+        .range(["#226666", "#aa6c39", "#0d4d4d", "#804515", "#003333", "#552600", "407f7f", "#d49a6a"]);
+
+      var MAX_TRIES = (width > 400) ? 6 : 3;
+
+      generateSkillCloud();
+
+      function generateSkillCloud(retryCycle) {
+          var wordsToDraw = {{ tweet_text_list|safe }};;
+          d3.layout.cloud()
+              .size([width, height])
+              .words(wordsToDraw)
+              .rotate(function() {
+                  return ~~(Math.random() * 0) * 90;
+              })
+              .font("Lucida Grande","Droid Sans")
+              .fontSize(function(d) {
+                  return d.size;
+              })
+              .on("end", function(fittedWords) {
+                  if (fittedWords.length == wordsToDraw.length) {
+                      drawSkillCloud(fittedWords);
+                  }
+                  else if (!retryCycle || retryCycle < MAX_TRIES) {
+                      generateSkillCloud((retryCycle || 1) + 1);
+                  }
+                  else {
+                      drawSkillCloud(fittedWords);
+                  }
+              })
+              .start();
+
+          function toFontSize(years, relevancy, retryCycle) {
+              var lineairSize = (((years - minyears) / (maxyears - minyears)) * (maxfont - minfont) * relevancy) + minfont;
+              var polarizedSize = Math.pow(lineairSize / 8, 3);
+              var reduceSize = polarizedSize * ((MAX_TRIES - retryCycle) / MAX_TRIES);
+              return ~~reduceSize;
+          }
+
+          function drawSkillCloud(words) {
+              d3.select("#cloud svg").remove();
+              d3.select("#cloud").append("svg")
+                  .attr("width", width)
+                  .attr("height", height)
+                  .append("g")
+                  .attr("transform", "translate(" + ~~(width / 2) + "," + ~~(height / 2) + ")")
+                  .selectAll("text")
+                  .data(words)
+                  .enter().append("text")
+                  .style("font-size", function(d) {
+                      return d.size + "px";
+                  })
+                  .style("-webkit-touch-callout", "none")
+                  .style("-webkit-user-select", "none")
+                  .style("-khtml-user-select", "none")
+                  .style("-moz-user-select", "none")
+                  .style("-ms-user-select", "none")
+                  .style("user-select", "none")
+                  .style("cursor", "default")
+                  .style("font-family", "Lucida Grande","Droid Sans")
+                  .style("fill", function(d, i) {
+                      return fill(i);
+                  })
+                  .attr("text-anchor", "middle")
+                  .attr("transform", function(d) {
+                      return "translate(" + [d.x, d.y] + ")rotate(" + d.rotate + ")";
+                  })
+                  .text(function(d) {
+                      return d.text;
+                  });
+
+              var svg = document.getElementsByTagName("svg")[0];
+              var bbox = svg.getBBox();
+              var viewBox = [bbox.x, bbox.y, bbox.width, bbox.height].join(" ");
+              svg.setAttribute("viewBox", viewBox);
+          }
+      }
+  </script>
+
+</html>
